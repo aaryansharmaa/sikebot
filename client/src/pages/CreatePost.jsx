@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-
+import { NFTStorage, File } from "nft.storage";
 import { preview } from "../assets";
 import { getRandomPrompt } from "../utils";
 import { FormField, Loader } from "../components";
@@ -14,6 +14,9 @@ const CreatePost = () => {
   });
   const [generatingImg, setGeneratingImg] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [image, setImage] = useState(null);
+  const [url, setURL] = useState(null);
+  const [metaurl, setMetaurl] = useState("");
 
   const generateImage = async () => {
     if (form.prompt) {
@@ -30,7 +33,15 @@ const CreatePost = () => {
           }
         );
         const data = await response.json();
-        setForm({ ...form, photo: `data:image/jpeg;base64,${data.photo}` });
+        //
+        // const base64data = Buffer.from(data).toString("base64");
+        // const img = `data:${data.photo}; base64` + base64data
+        const img = `data:image/jpeg;base64,${data.photo}`; //image being loaded successfully
+        setImage(img);
+        setForm({ ...form, photo: img });
+
+        const url = await uploadImage(form); // upload to IPFS
+        return data;
       } catch (error) {
         alert(error);
       } finally {
@@ -43,6 +54,11 @@ const CreatePost = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    // const imageData = await generateImage(); // call API to generate image
+
+    // const url = await uploadImage(imageData.photo); // upload to IPFS
+
+    // console.log("url", url);
 
     if (form.prompt && form.photo) {
       setLoading(true);
@@ -68,6 +84,36 @@ const CreatePost = () => {
       }
     } else {
       alert("Please enter a prompt and generate the image");
+    }
+  };
+
+  // IPFS UPLOAD
+
+  const uploadImage = async (imageInfo) => {
+    console.log("uploading image");
+
+    try {
+      const nftstorage = new NFTStorage({
+        token:
+          "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkaWQ6ZXRocjoweDRFQ0Y5OGFEMmZBODhmQzFhYWJmNkUzODJmMzY5YjMxRThkOGJmM2QiLCJpc3MiOiJuZnQtc3RvcmFnZSIsImlhdCI6MTY2ODg2MzMxNDQyOSwibmFtZSI6Im5mdGdhcmFnZSJ9.ikydHbjQt7iSZQjZkMrjiP4xLroimsUtPV6_dFHkNEI",
+      });
+      const { ipnft } = await nftstorage.store({
+        image: new File([imageInfo.photo], "image.jpeg", {
+          type: "image/jpeg",
+        }),
+        name: imageInfo.name, // or imagedata?
+        description: imageInfo.prompt,
+      });
+      // Save the URL
+      const url = `https://ipfs.io/ipfs/${ipnft}/metadata.json`;
+
+      console.log("url", url);
+
+      setURL(url);
+
+      return url;
+    } catch (error) {
+      console.error(error.message);
     }
   };
 
@@ -139,11 +185,23 @@ const CreatePost = () => {
           >
             {generatingImg ? "Generating" : "Generate"}
           </button>
+
+          <button
+            type="button"
+            className="text-white bg-green-700 font-medium rounded-md text-sm w-full sm:w-auto px-5 py-2.5 text-center"
+          >
+            <p>
+              View&nbsp;
+              <a href={url} target="_blank" rel="noreferrer">
+                Metadata
+              </a>
+            </p>{" "}
+          </button>
         </div>
         <div className="mt-10">
           <p className="mt-2 text-[#666e75] text-[14px]">
             {" "}
-            Once you have created the image you want you can share with others
+            Once you have created the image you want, you can share with others
             in the community
           </p>
           <button
