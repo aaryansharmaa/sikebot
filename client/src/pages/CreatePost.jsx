@@ -1,9 +1,14 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { NFTStorage, File } from "nft.storage";
 import { preview } from "../assets";
 import { getRandomPrompt } from "../utils";
+import { ethers } from "ethers";
 import { FormField, Loader } from "../components";
+//ABIs
+import NFT from "../abis/NFT.json";
+// config
+import config from "../config.json";
 
 const CreatePost = () => {
   const navigate = useNavigate();
@@ -16,7 +21,26 @@ const CreatePost = () => {
   const [loading, setLoading] = useState(false);
   const [image, setImage] = useState(null);
   const [url, setURL] = useState(null);
+  const [nft, setNFT] = useState(null);
+  const [provider, setProvider] = useState(null);
+  const [isWaiting, setIsWaiting] = useState(false);
   const [metaurl, setMetaurl] = useState("");
+  const [message, setMessage] = useState("");
+
+  const loadBlockchainData = async () => {
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    setProvider(provider);
+
+    const network = await provider.getNetwork(); // get the connected network
+
+    const nft = new ethers.Contract(
+      config[network.chainId].nft.address,
+      NFT,
+      provider
+    );
+    setNFT(nft);
+    const name = await nft.name();
+  };
 
   const generateImage = async () => {
     if (form.prompt) {
@@ -41,6 +65,9 @@ const CreatePost = () => {
         setForm({ ...form, photo: img });
 
         const url = await uploadImage(form); // upload to IPFS
+        // await mintImage
+        await mintImage(url);
+
         return data;
       } catch (error) {
         alert(error);
@@ -91,6 +118,7 @@ const CreatePost = () => {
 
   const uploadImage = async (imageInfo) => {
     console.log("uploading image");
+    setMessage("Uploading Image...");
 
     try {
       const nftstorage = new NFTStorage({
@@ -116,6 +144,20 @@ const CreatePost = () => {
       console.error(error.message);
     }
   };
+
+  const mintImage = async (tokenURI) => {
+    setMessage("Waiting for Mint...");
+
+    const signer = await provider.getSigner();
+    const transaction = await nft
+      .connect(signer)
+      .mint(tokenURI, { value: ethers.utils.parseUnits("1", "ether") });
+    await transaction.wait();
+  };
+
+  useEffect(() => {
+    loadBlockchainData();
+  }, []);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
