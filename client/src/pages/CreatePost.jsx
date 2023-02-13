@@ -37,7 +37,7 @@ const CreatePost = () => {
         setGeneratingImg(false);
       }
     } else {
-      alert("Please enter a prompt");
+      alert("Please enter a prompt!");
     }
   };
 
@@ -143,7 +143,7 @@ const CreatePost = () => {
         <div className="mt-10">
           <p className="mt-2 text-[#666e75] text-[14px]">
             {" "}
-            Once you have created the image you want you can share with others
+            Once you have created the image you want, you can share with others
             in the community
           </p>
           <button
